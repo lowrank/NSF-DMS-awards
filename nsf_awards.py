@@ -1,8 +1,9 @@
 import os
 from nsf_query import get_awards_csv
+from datetime import datetime
 
 default = 1976
-current = 2023 # grep all awards till current year
+current = datetime.now().year # grep all awards till current year
 
 # Program list to be downloaded.
 programs = {
@@ -29,7 +30,7 @@ for program, start_year in programs.items():
         
         target_file = os.path.join(os.path.join(cur_dir, prog_dir), "Awards-" + program.replace(" ", "-") +"-" + str(year) + ".csv")
 
-        if os.path.exists(target_file):
+        if os.path.exists(target_file) and year < current:
             print( "file exists for " + program + " " + str(year) +"\n" )
         else:
             try:
