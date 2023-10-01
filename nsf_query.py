@@ -78,5 +78,11 @@ def get_awards_csv(program_name, year, headless=True):
     
     if not os.path.isdir(os.path.join(cur_dir, prog_dir)):
         os.mkdir(os.path.join(cur_dir, prog_dir))
-
-    os.rename("Awards.csv",  os.path.join(os.path.join(cur_dir, prog_dir), "Awards-" + program_name.replace(" ", "-") +"-" + str(year) + ".csv"))
+    try:
+        os.rename("Awards.csv",  os.path.join(os.path.join(cur_dir, prog_dir), "Awards-" + program_name.replace(" ", "-") +"-" + str(year) + ".csv"))
+    except:
+        if os.path.exists("Awards.csv"):
+            print("file exists for " + program_name + " " + str(year) +"\n" )
+            print("removing old file and renaming new file")
+            os.remove(os.path.join(os.path.join(cur_dir, prog_dir), "Awards-" + program_name.replace(" ", "-") +"-" + str(year) + ".csv"))
+            os.rename("Awards.csv",  os.path.join(os.path.join(cur_dir, prog_dir), "Awards-" + program_name.replace(" ", "-") +"-" + str(year) + ".csv"))
