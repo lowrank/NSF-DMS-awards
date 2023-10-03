@@ -42,3 +42,8 @@ for program, start_year in programs.items():
                 print(" creating new file, the download is completed for " + program + " " + str(year) +"\n")
             else:
                 print("downloading issue, awards not downloaded.")
+
+
+# clean the directory
+if os.path.exists("Awards.csv"):
+    os.remove("Awards.csv")
