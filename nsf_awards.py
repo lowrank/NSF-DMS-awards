@@ -33,8 +33,12 @@ for program, start_year in programs.items():
         if os.path.exists(target_file) and year < current:
             print( "file exists for " + program + " " + str(year) +"\n" )
         else:
-            try:
-                get_awards_csv(program, year)
-                print( "download is completed for " + program + " " + str(year) +"\n" )
-            except:
-                print( "download failed for " + program + " " + str(year) +"\n" )
+            out = get_awards_csv(program, year)
+            if out == 0:
+                print( "update needed, the download is completed for " + program + " " + str(year) +"\n" )
+            elif out == 1:
+                print( "update is not needed, the download is completed for " + program + " " + str(year) +"\n")
+            elif out == 2:
+                print(" creating new file, the download is completed for " + program + " " + str(year) +"\n")
+            else:
+                print("downloading issue, awards not downloaded.")

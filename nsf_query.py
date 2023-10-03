@@ -1,6 +1,7 @@
 
 import os
 import time
+import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
@@ -65,6 +66,7 @@ def get_awards_csv(program_name, year, headless=True):
         driver = webdriver.Chrome(options=chrome_options)
     else:
         driver = webdriver.Chrome()
+
     print(generate_query_url(program_name, year))
     driver.get(generate_query_url(program_name, year))
     time.sleep(10)
@@ -78,11 +80,23 @@ def get_awards_csv(program_name, year, headless=True):
     
     if not os.path.isdir(os.path.join(cur_dir, prog_dir)):
         os.mkdir(os.path.join(cur_dir, prog_dir))
-    try:
-        os.rename("Awards.csv",  os.path.join(os.path.join(cur_dir, prog_dir), "Awards-" + program_name.replace(" ", "-") +"-" + str(year) + ".csv"))
-    except:
-        if os.path.exists("Awards.csv"):
-            print("file exists for " + program_name + " " + str(year) +"\n" )
-            print("removing old file and renaming new file")
-            os.remove(os.path.join(os.path.join(cur_dir, prog_dir), "Awards-" + program_name.replace(" ", "-") +"-" + str(year) + ".csv"))
-            os.rename("Awards.csv",  os.path.join(os.path.join(cur_dir, prog_dir), "Awards-" + program_name.replace(" ", "-") +"-" + str(year) + ".csv"))
+
+
+    target_file = os.path.join(os.path.join(cur_dir, prog_dir), "Awards-" + program_name.replace(" ", "-") +"-" + str(year) + ".csv")
+    if os.path.exists(target_file) and os.path.exists("Awards.csv"):
+        # check rows in csv
+        old_num_of_rows = len(pd.read_csv(target_file,  encoding='latin-1'))
+        new_num_of_rows = len(pd.read_csv("Awards.csv", encoding='latin-1'))
+        
+        if old_num_of_rows != new_num_of_rows:
+            os.remove(target_file)
+            os.rename("Awards.csv",  target_file)
+            return 0
+        else:
+            os.remove("Awards.csv")
+            return 1
+    elif os.path.exists("Awards.csv"):
+        os.rename("Awards.csv",  target_file)
+        return 2
+    else:
+        return 3
