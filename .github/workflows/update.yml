@@ -28,7 +28,7 @@ jobs:
           python nsf_awards.py 
 
       - name: Upload Awards
-        env: |
+        env:
           GITHUB_TOKEN: ${{ secrets.TOKEN }}
         run: |
           git config --local user.email "yzz0225@auburn.edu"
