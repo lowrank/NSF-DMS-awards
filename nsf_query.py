@@ -63,16 +63,33 @@ def get_awards_csv(program_name, year, headless=True):
     if headless:
         chrome_options = webdriver.ChromeOptions()
         chrome_options.add_argument('headless')
+        chrome_options.add_argument('--user-data-dir=.config/google-chrome')
+        path = os.path.dirname(os.path.abspath(__file__))
+        prefs = {"download.default_directory":path}
+        chrome_options.add_experimental_option('prefs', prefs)
         driver = webdriver.Chrome(options=chrome_options)
     else:
-        driver = webdriver.Chrome()
+        chrome_options = webdriver.ChromeOptions()
+        chrome_options.add_argument('--user-data-dir=.config/google-chrome')
+        path = os.path.dirname(os.path.abspath(__file__))
+        prefs = {"download.default_directory":path}
+        chrome_options.add_experimental_option('prefs', prefs)
+        driver = webdriver.Chrome(options=chrome_options)
 
     print(generate_query_url(program_name, year))
+
     driver.get(generate_query_url(program_name, year))
     time.sleep(10)
     driver.get('https://www.nsf.gov/awardsearch/ExportResultServlet?exportType=csv')
     time.sleep(10)
-    driver.close()
+
+    trials = 0
+
+    while not os.path.exists("Awards.csv") and trials < 3:
+        driver.get(driver.current_url)
+        time.sleep(10)
+        trials += 1
+        print('retrying at ', trials, ' time')
 
 
     cur_dir = os.path.dirname(__file__)
