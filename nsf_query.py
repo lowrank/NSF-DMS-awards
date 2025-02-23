@@ -63,14 +63,12 @@ def get_awards_csv(program_name, year, headless=True):
     if headless:
         chrome_options = webdriver.ChromeOptions()
         chrome_options.add_argument('headless')
-        chrome_options.add_argument('--user-data-dir=.config/google-chrome')
         path = os.path.dirname(os.path.abspath(__file__))
         prefs = {"download.default_directory":path}
         chrome_options.add_experimental_option('prefs', prefs)
         driver = webdriver.Chrome(options=chrome_options)
     else:
         chrome_options = webdriver.ChromeOptions()
-        chrome_options.add_argument('--user-data-dir=.config/google-chrome')
         path = os.path.dirname(os.path.abspath(__file__))
         prefs = {"download.default_directory":path}
         chrome_options.add_experimental_option('prefs', prefs)
