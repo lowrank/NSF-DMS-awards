@@ -3,7 +3,7 @@ from nsf_query import get_awards_csv
 from datetime import datetime
 
 default = 1976
-current = datetime.now().year # grep all awards till current year
+current = 2025 #datetime.now().year # grep all awards till current year
 
 # Program list to be downloaded.
 programs = {

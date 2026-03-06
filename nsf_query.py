@@ -1,9 +1,8 @@
 
 import os
-import time
+import requests
 import pandas as pd
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
+import json
 
 
 program_elements_codes = {
@@ -20,98 +19,83 @@ program_elements_codes = {
     "Topology": "1267"
 }
 
-def generate_query_url(program_name, start_year, expired='true'):
-    URL = 'https://www.nsf.gov/awardsearch/advancedSearchResult?'
-    Query = {
-        'PIId': '',
-        'PIFirstName': '',
-        'PILastName': '',
-        'PIOrganization': '',
-        'PIState': '',
-        'PIZip': '',
-        'PICountry': '',
-        'ProgOrganization':'03040000',
+def generate_query_url(program_name, start_year):
+    """Generate NSF API query URL for awards in a given year."""
+    base_url = 'https://api.nsf.gov/services/v1/awards.json'
+    params = {
         'ProgEleCode': program_elements_codes[program_name],
         'BooleanElement': 'All',
-        'ProgRefCode': '',
-        'BooleanRef': 'All',
-        'Program': '',
-        'ProgOfficer': '',
-        'Keyword': '',
-        'AwardNumberOperator': '',
-        'AwardAmount': '',
-        'AwardInstrument': '',
         'ActiveAwards': 'true',
-        'ExpiredAwards': expired,
-        'OriginalAwardDateOperator': '',
-        'OriginalAwardDateFrom': '',
-        'OriginalAwardDateTo': '',
+        'ExpiredAwards': 'true',
+        'StartDateFrom': f'01/01/{start_year}',
+        'StartDateTo': f'12/31/{start_year}',
         'StartDateOperator': 'Range',
-        'StartDateFrom': '01%2F01%2F' + str(start_year),
-        'StartDateTo': '12%2F31%2F' + str(start_year),
-        'ExpDateOperator': ''
+        'org_code_div': '03040000',
+        'rpp': '3000',
+        'offset': '0',
+        'sortKey': 'startDate'
     }
-
-    for q in Query:
-        URL += q + '=' + Query[q] + '&'
-
-    return URL[:-1]
-
-
-def get_awards_csv(program_name, year, headless=True):
-
-    if headless:
-        chrome_options = webdriver.ChromeOptions()
-        chrome_options.add_argument('headless')
-        path = os.path.dirname(os.path.abspath(__file__))
-        prefs = {"download.default_directory":path}
-        chrome_options.add_experimental_option('prefs', prefs)
-        driver = webdriver.Chrome(options=chrome_options)
-    else:
-        chrome_options = webdriver.ChromeOptions()
-        path = os.path.dirname(os.path.abspath(__file__))
-        prefs = {"download.default_directory":path}
-        chrome_options.add_experimental_option('prefs', prefs)
-        driver = webdriver.Chrome(options=chrome_options)
-
-    print(generate_query_url(program_name, year))
-
-    driver.get(generate_query_url(program_name, year))
-    time.sleep(10)
-    driver.get('https://www.nsf.gov/awardsearch/ExportResultServlet?exportType=csv')
-    time.sleep(10)
-
-    trials = 0
-
-    while not os.path.exists("Awards.csv") and trials < 3:
-        driver.get(driver.current_url)
-        time.sleep(10)
-        trials += 1
-        print('retrying at ', trials, ' time')
-
-
-    cur_dir = os.path.dirname(__file__)
-    prog_dir = program_name.replace(" ", "-")
     
-    if not os.path.isdir(os.path.join(cur_dir, prog_dir)):
-        os.mkdir(os.path.join(cur_dir, prog_dir))
+    # Build URL with query parameters
+    url = base_url + '?'
+    url += '&'.join([f'{k}={v}' for k, v in params.items()])
+    return url
 
 
-    target_file = os.path.join(os.path.join(cur_dir, prog_dir), "Awards-" + program_name.replace(" ", "-") +"-" + str(year) + ".csv")
-    if os.path.exists(target_file) and os.path.exists("Awards.csv"):
-        # check rows in csv
-        old_num_of_rows = len(pd.read_csv(target_file,  encoding='latin-1'))
-        new_num_of_rows = len(pd.read_csv("Awards.csv", encoding='latin-1'))
+def get_awards_csv(program_name, year):
+    """Fetch awards from NSF API and save as CSV."""
+    
+    url = generate_query_url(program_name, year)
+    print(f"Fetching: {url}")
+    
+    try:
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        data = response.json()
         
-        if old_num_of_rows != new_num_of_rows:
-            os.remove(target_file)
-            os.rename("Awards.csv",  target_file)
-            return 0
+        # Extract awards from response
+        if 'response' in data and 'award' in data['response']:
+            awards = data['response']['award']
+            df = pd.json_normalize(awards)
         else:
-            os.remove("Awards.csv")
-            return 1
-    elif os.path.exists("Awards.csv"):
-        os.rename("Awards.csv",  target_file)
-        return 2
-    else:
+            print(f"No awards found for {program_name} {year}")
+            return 2
+        
+        # Create directory if needed
+        cur_dir = os.path.dirname(__file__)
+        prog_dir = program_name.replace(" ", "-")
+        
+        if not os.path.isdir(os.path.join(cur_dir, prog_dir)):
+            os.mkdir(os.path.join(cur_dir, prog_dir))
+        
+        # Save to CSV
+        target_file = os.path.join(os.path.join(cur_dir, prog_dir), "Awards-" + program_name.replace(" ", "-") +"-" + str(year) + ".csv")
+        
+        # Check if file already exists
+        if os.path.exists(target_file):
+            try:
+                old_df = pd.read_csv(target_file, encoding='latin-1')
+            except:
+                old_df = pd.read_csv(target_file, encoding='utf-8')
+            old_num_rows = len(old_df)
+            new_num_rows = len(df)
+            
+            print(f"File exists with {old_num_rows} rows. New data has {new_num_rows} rows.")
+            
+            if new_num_rows > old_num_rows:
+                df.to_csv(target_file, index=False)
+                print(f"Replaced {target_file} with newer data")
+                return 0
+            else:
+                print(f"New data does not have more rows. Keeping existing file.")
+                return 1
+        
+        # Save the dataframe to CSV
+        df.to_csv(target_file, index=False)
+        print(f"Saved awards to: {target_file}")
+        return 0
+        
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching data for {program_name} {year}: {e}")
         return 3
+
