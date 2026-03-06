@@ -57,6 +57,57 @@ def get_awards_csv(program_name, year):
         if 'response' in data and 'award' in data['response']:
             awards = data['response']['award']
             df = pd.json_normalize(awards)
+            
+            # Combine first and last name for PrincipalInvestigator
+            if 'piFirstName' in df.columns and 'piLastName' in df.columns:
+                df['PrincipalInvestigator'] = df['piFirstName'].fillna('') + ' ' + df['piLastName'].fillna('')
+                df['PrincipalInvestigator'] = df['PrincipalInvestigator'].str.strip()
+            
+            # Map API column names to desired column names
+            column_mapping = {
+                'id': 'AwardNumber',
+                'title': 'Title',
+                'orgLongName': 'NSFOrganization',
+                'program': 'Program(s)',
+                'startDate': 'StartDate',
+                'latestAmendmentDate': 'LastAmendmentDate',
+                'PrincipalInvestigator': 'PrincipalInvestigator',
+                'awardeeStateCode': 'State',
+                'awardeeName': 'Organization',
+                'transType': 'AwardInstrument',
+                'poName': 'ProgramManager',
+                'expDate': 'EndDate',
+                'estimatedTotalAmt': 'AwardedAmountToDate',
+                'coPDPI': 'Co-PIName(s)',
+                'piEmail': 'PIEmailAddress',
+                'awardeeAddress': 'OrganizationStreet',
+                'awardeeCity': 'OrganizationCity',
+                'awardeeZipCode': 'OrganizationZip',
+                'awardeePhone': 'OrganizationPhone',
+                'dirAbbr': 'NSFDirectorate',
+                'progEleCode': 'ProgramElementCode(s)',
+                'progRefCode': 'ProgramReferenceCode(s)',
+                'fundsObligatedAmt': 'ARRAAmount',
+                'abstractText': 'Abstract'
+            }
+            
+            # Select and rename columns that exist
+            existing_mapping = {k: v for k, v in column_mapping.items() if k in df.columns}
+            df = df[list(existing_mapping.keys())].rename(columns=existing_mapping)
+            
+            # Define the final column order
+            final_columns = [
+                'AwardNumber', 'Title', 'NSFOrganization', 'Program(s)',
+                'StartDate', 'LastAmendmentDate', 'PrincipalInvestigator', 'State',
+                'Organization', 'AwardInstrument', 'ProgramManager', 'EndDate',
+                'AwardedAmountToDate', 'Co-PIName(s)', 'PIEmailAddress', 'OrganizationStreet',
+                'OrganizationCity', 'OrganizationZip', 'OrganizationPhone',
+                'NSFDirectorate', 'ProgramElementCode(s)', 'ProgramReferenceCode(s)', 'ARRAAmount', 'Abstract'
+            ]
+            
+            # Reorder columns, keeping only those that exist
+            existing_final_columns = [col for col in final_columns if col in df.columns]
+            df = df[existing_final_columns]
         else:
             print(f"No awards found for {program_name} {year}")
             return 2
@@ -74,10 +125,15 @@ def get_awards_csv(program_name, year):
         # Check if file already exists
         if os.path.exists(target_file):
             try:
-                old_df = pd.read_csv(target_file, encoding='latin-1')
+                try:
+                    old_df = pd.read_csv(target_file, encoding='latin-1')
+                except:
+                    old_df = pd.read_csv(target_file, encoding='utf-8')
+                old_num_rows = len(old_df)
             except:
-                old_df = pd.read_csv(target_file, encoding='utf-8')
-            old_num_rows = len(old_df)
+                # File exists but is empty or unreadable
+                old_num_rows = 0
+            
             new_num_rows = len(df)
             
             print(f"File exists with {old_num_rows} rows. New data has {new_num_rows} rows.")
