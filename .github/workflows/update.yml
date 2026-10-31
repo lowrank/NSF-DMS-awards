@@ -6,7 +6,9 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     strategy:
       matrix:
         python-version: ["3.9"]
@@ -36,4 +38,3 @@ jobs:
           git add -A 
           git commit -m "Update Awards" || echo "No changes" 
           git push 
-
